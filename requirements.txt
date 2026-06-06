@@ -1,0 +1,4 @@
+# Stage 0 deps only — we add more per stage, not all up front.
+anthropic>=0.106
+langgraph>=1.2
+python-dotenv>=1.2

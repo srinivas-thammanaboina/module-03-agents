@@ -75,6 +75,10 @@ The diagram + the trace are the teaching tools here, the way the CLI was in Modu
 
 Don't push to the next stage without an explicit "go." Even if the current stage runs cleanly, the pause is where the learning consolidates. The 🛑 review gates in `project-build-prompts.md` are real stops.
 
+### Rule 7 — Catch me up on resume
+
+At the **start of every session**, before anything else, read `SESSION-STATE.md` and give me a brief catch-up: **one to two sentences per task** we completed last session, so I can re-orient fast — then state the single next step. Keep it short: a recap to reload context, not a status report. The per-task recap block at the top of `SESSION-STATE.md` is the source for this.
+
 ## Project architecture (high level)
 
 An explicit LangGraph `StateGraph` — control flow is nodes and conditional edges I can see, **not** a prebuilt agent executor. **Do not use `create_react_agent` / `AgentExecutor`; build the graph by hand.** The package is `filing_agent/`.
