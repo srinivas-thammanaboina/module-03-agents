@@ -30,7 +30,14 @@ Two failure modes we designed against:
 
 ## Sanity-check experiment (fill in after running)
 
-_Pending Prompt 1.4 (first live agent run)._ The real test of description quality is behavioral: pose a question and watch which tools the model picks and in what order. Target observations: (a) for a "what does X say" question it reaches for `search_filings`; (b) for "what filing/sections exist" it reaches for `describe_filing`; (c) it never emits a `year`/`form_type` argument; (d) for a YoY question it pulls two numbers then calls `compare_numbers`. Record the actual tool sequence here once we run it.
+**Observed (Prompts 1.4 stubs + 1.6 real).** Behavioral checks on description quality:
+- (a) For a content question the model reached for `search_filings` ✓ (real run went straight `search_filings → compare_numbers`).
+- (b) On the stub run it opened with `describe_filing` to orient before searching ✓ — the "orient before searching" framing in the description worked.
+- (c) It never emitted a `year` or `form_type` argument in any run ✓ — the "no year/form-type filter" sentence held.
+- (d) For the YoY question it pulled two numbers from one filing then called `compare_numbers` ✓ (`−$2,863M / −2.93%` came from the tool, not the model).
+- Bonus: with stub data the model **refused to fabricate** figures, citing the stub note — the "never guess / ground every claim" system prompt + the visible chunk text combined to produce honest behavior.
+
+Interpretation: the descriptions are doing their job as control logic. One open question for later: the real run skipped `describe_filing` entirely — fine here, but if orientation turns out to improve `company` targeting on harder questions, the `search_filings` description could nudge "call describe_filing first when unsure which sections exist."
 
 ## Future experiments queue
 

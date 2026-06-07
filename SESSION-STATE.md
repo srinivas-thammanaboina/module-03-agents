@@ -6,15 +6,16 @@
 
 > On resume, summarize the per-task list below (1–2 sentences each), then state the single next step.
 
-**Session 1 (ended 2026-06-05) — what we did, per task:**
-1. **Docs scaffold** — created `CLAUDE.md`, `SESSION-STATE.md`, `WHY.md` (skeleton), `notes/README.md`, all adapted from Module 02's conventions and the agent project's needs.
-2. **Progress tracker** — added a per-stage *concepts → tasks → status* tracker to `SESSION-STATE.md` (legend: ⬜ todo · 🔄 in-progress · ✅ done · 🚧 blocked), each task tied to a prompt in `project-build-prompts-v2.md`.
-3. **Stage 0 — Scaffold (✅ done)** — repo skeleton (venv, pinned deps `anthropic 0.106`/`langgraph 1.2.4`/`python-dotenv 1.2.2`, `filing_agent/`, `.env.example`, `.gitignore`, README); built `filing_agent/llm.py` (`get_client` + raw-response `call_model`) and `scripts/smoke_test.py`; smoke test passed — Sonnet 4.6 replied "OK".
-4. **Stage 1 whiteboard (✅ done)** — designed the model↔tools loop on paper and captured it in `notes/agent-loop-notes.md`; locked two decisions: Anthropic-native message dicts (no LangChain message objects) + a minimal system prompt in `model_node`.
+**Session 2 (ended 2026-06-06) — what we did, per task:**
+1. **Phone-focus reminder hook** — added a global `SessionStart` hook in `~/.claude/settings.json` so every Claude session opens with "📵 Step 0: Keep your mobile far away." Saved the preference to memory too, so it carries across modules.
+2. **Adopted v2 build prompts** — switched the source of truth to `project-build-prompts-v2.md` (v1 assumed a corpus that doesn't exist) and swept every project doc for stale v1 references (10-K only; `describe_filing`; chunk-`id`; never send `temperature`).
+3. **Stage 1 Prompts 1.1–1.5 (✅)** — built `tools.py` (3 tools + schemas, v2 shapes), `executor.py` + 4 passing tests (chunk `id` survives, errors return strings), `state.py`/`nodes.py` (add-reducer + system prompt), `graph.py` + `run_agent.py` (loop verified live), and `draw_graph.py` → `docs/graph-stage1.mmd` (matches the hand-drawn graph).
+4. **Stage 1 Prompt 1.6 — real retriever bound (✅)** — `filing_agent/retrieval.py` imports Module 02's composed stack via `MODULE_02_PATH`, builds the embedder/store/stack once, normalizes names→tickers, preserves chunk `id`. Pinned retrieval deps to M02's exact versions. End-to-end real run worked: `search_filings → compare_numbers`, grounded answer citing chunk ids, TSLA revenue −2.93%.
+5. **Stage 1 COMPLETE** — captured notes (`agent-loop-notes.md`, `tools-notes.md` sanity-checks filled with the real runs); the committed core of the module is done.
 
-**Single next step:** Begin **Stage 1, Prompt 1.1** — write `filing_agent/tools.py`: the 3 tools (`search_filings`, `describe_filing`, `compare_numbers`) + `TOOL_SCHEMAS`, with retrieval *stubbed* and `compare_numbers` fully real. The 🛑 there is about tool-*description* quality (the model picks tools from descriptions alone).
+**Single next step:** **Stage 2 — Reflection.** Per Rule 1, **whiteboard first** (don't write code): design the `reflect` node + the *revision loop* (a second loop atop the tool loop) — a deterministic citation audit (mirror Module 02's `_audit_citations`: every cited id must be one actually retrieved) PLUS an LLM groundedness check; then capture it in `notes/reflection-notes.md` before any code. Prompts 2.1 → 2.2 in `project-build-prompts-v2.md`.
 
-> **Update (Session 2):** Switched to **`project-build-prompts-v2.md`** as the source of truth — v1 assumed a corpus that doesn't exist. `tools.py` rewritten to v2 (no year/form_type; `lookup_filing`→`describe_filing`; chunks carry `id`). All docs swept for v1 references. See ground-truth decisions below.
+> _Session 1 (ended 2026-06-05): scaffolded the docs/working-agreement layer, the progress tracker, Stage 0 (smoke test passed), and the Stage 1 whiteboard. Full Stage-1 build happened in Session 2 above._
 
 ## Where we are
 
@@ -44,8 +45,8 @@ Each task maps to a prompt in `project-build-prompts-v2.md`. Mark blocked tasks 
 |---|---|
 | Docs scaffold (`CLAUDE.md`, `SESSION-STATE.md`, `WHY.md`, `notes/`) | ✅ done |
 | Stage 0 — Scaffold | ✅ done (smoke test passed: Sonnet 4.6 replied "OK") |
-| Stage 1 — Comparison Agent | 🔄 in-progress |
-| Stage 2 — Reflection | ⬜ todo |
+| Stage 1 — Comparison Agent | ✅ done (real run: `search_filings → compare_numbers`, grounded answer with chunk-id citations; TSLA revenue −2.93% computed by the tool) |
+| Stage 2 — Reflection | 🔄 next |
 | Stage 3 — MCP external tool | ⬜ todo (extension) |
 | Stage 4 — Multi-agent | ⬜ todo (extension) |
 
@@ -62,10 +63,10 @@ Each task maps to a prompt in `project-build-prompts-v2.md`. Mark blocked tasks 
 |---|---|---|
 | Define 3 tools (`search_filings`, `describe_filing`, `compare_numbers`) + `TOOL_SCHEMAS`; retrieval stubbed | 1.1 | ✅ (`tools.py`, **v2**: no year/form_type, stub chunks carry `id`, `describe_filing` returns identity+sections; `compare_numbers` real) — at 🛑: review schema descriptions |
 | `executor.py` `run_tool` (unknown tool + raising tool handled) + `tests/test_executor.py` | 1.2 | ✅ (4/4 tests pass; chunk `id` leads each serialized line; unknown/raising tools return readable ERROR strings, never crash; pytest pinned, root `conftest.py` added) |
-| `state.py` (`AgentState`) + `nodes.py` (`model_node`, `tools_node`) | 1.3 | ⬜ |
-| `graph.py` StateGraph + `should_continue` + `scripts/run_agent.py` | 1.4 | ⬜ |
-| `scripts/draw_graph.py` → `docs/graph-stage1.mmd` (win-condition diagram check) | 1.5 | ⬜ |
-| Bind real Module 02 retriever (replace stub; keep stub behind a flag) | 1.6 | ⬜ |
+| `state.py` (`AgentState`) + `nodes.py` (`model_node`, `tools_node`) | 1.3 | ✅ (add-reducer = `operator.add`; system prompt states single-filing reality; `_tool_uses` helper shared; `call_model` gained `system=`) |
+| `graph.py` StateGraph + `should_continue` + `scripts/run_agent.py` | 1.4 | ✅ (loop verified live: `describe_filing → search_filings → answer`, 2 turns, exited on its own; agent correctly refused to fabricate on stub data) |
+| `scripts/draw_graph.py` → `docs/graph-stage1.mmd` (win-condition diagram check) | 1.5 | ✅ (mermaid matches hand-drawn graph: `model` dotted→`tools`/`END`, `tools`→`model` solid loop-back) |
+| Bind real Module 02 retriever (replace stub; keep stub behind a flag) | 1.6 | ✅ (`filing_agent/retrieval.py`: imports M02 composed stack via `MODULE_02_PATH`+sys.path; embedder/store/stack built once; names→tickers; chunk `id` preserved; `run_agent.py --stub` keeps tests on stubs. Deps pinned to M02: torch 2.12.0 / s-t 5.5.1 / chromadb 1.5.9 / numpy 2.4.6) |
 
 ### Stage 2 — Reflection (the self-check node)
 **Concepts:** reflection as a *node*, not a prompt trick; the revision loop; groundedness (claim → chunk); graceful give-up (flag-as-unverified).

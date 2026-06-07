@@ -87,7 +87,9 @@ Two nodes, one conditional edge, one loop-back. **That conditional edge *is* the
 
 ## Sanity-check experiment (fill in after running)
 
-_TBD — after Prompt 1.4/1.6._ Target: run a question needing ≥2 tool calls and confirm the printed tool sequence shows a genuine loop (e.g. `search → search → compare → answer`), first against stubs, then against the real Module 02 retriever. Record the actual sequence and whether the model exited on its own (vs. hitting the cap).
+**Stubs (Prompt 1.4):** *"In Tesla's latest 10-K, did automotive revenue grow…"* → tool sequence `describe_filing → search_filings`, 2 turns, exited on its own. The agent correctly **refused to fabricate** numbers once it saw the stub data — first evidence the loop AND the system-prompt grounding discipline both work.
+
+**Real retriever (Prompt 1.6):** *"…did total revenue grow versus the prior year it reports? Give the figures and cite chunks."* → tool sequence `search_filings → compare_numbers`, 3 turns, exited on its own. Pulled `$94,827M` (2025) and `$97,690M` (2024) from ONE 10-K, called `compare_numbers` (→ `−$2,863M / −2.93%`, the tool's exact output), and answered with citations `[TSLA-2026-01-29-0222] [TSLA-2026-01-29-0223]`. ≥2 tool calls, real corpus, every claim carries a chunk id — Stage 1 "done when" satisfied. Note the loop chose *not* to call `describe_filing` here (it went straight to search), confirming the model — not our code — orders the operations per question.
 
 ## Future experiments queue
 

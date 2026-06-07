@@ -28,19 +28,26 @@ from typing import Any, Callable, Optional
 # ---------------------------------------------------------------------------
 # The retriever seam (bound for real at Prompt 1.6)
 # ---------------------------------------------------------------------------
-# A thin interface, deliberately not imported from Module 02 yet. Until something
-# is bound, the search/describe tools return stub data so the loop is testable
-# without the corpus. `bind_retriever` lets Prompt 1.6 inject the real pipeline.
-_retriever: Optional[Callable[..., Any]] = None
+# Two thin callables, deliberately not imported from Module 02 here. Until they're
+# bound, the search/describe tools return clearly-marked stub data so the whole
+# loop is testable without the corpus. `filing_agent.retrieval.bind_real_retriever`
+# injects the real composed stack at runtime; tests never call it, so they stay on
+# stubs (the build-prompt 1.6 "keep the stub behind a fallback" requirement).
+_search_fn: Optional[Callable[[str, Optional[str]], list[dict[str, Any]]]] = None
+_describe_fn: Optional[Callable[[str], dict[str, Any]]] = None
 
 
-def bind_retriever(fn: Callable[..., Any]) -> None:
-    """Bind the real Module 02 retrieval callable (done at Prompt 1.6).
+def bind_retriever(
+    search_fn: Callable[[str, Optional[str]], list[dict[str, Any]]],
+    describe_fn: Callable[[str], dict[str, Any]],
+) -> None:
+    """Bind the real Module 02 retrieval callables (done at Prompt 1.6).
 
     Until called, search_filings / describe_filing return clearly-marked stubs.
     """
-    global _retriever
-    _retriever = fn
+    global _search_fn, _describe_fn
+    _search_fn = search_fn
+    _describe_fn = describe_fn
 
 
 # ---------------------------------------------------------------------------
@@ -64,7 +71,7 @@ def search_filings(query: str, company: Optional[str] = None) -> list[dict[str, 
         A list of chunk dicts, each:
         {id, text, company, section, filing_date, source_url, score}.
     """
-    if _retriever is None:
+    if _search_fn is None:
         # STUB — clearly marked so it can never be mistaken for real data.
         # NOTE: the `id` is present even in the stub; Stage 2 depends on it.
         return [
@@ -81,7 +88,7 @@ def search_filings(query: str, company: Optional[str] = None) -> list[dict[str, 
                 "score": 0.0,
             }
         ]
-    return _retriever(query=query, company=company)
+    return _search_fn(query, company)
 
 
 # ---------------------------------------------------------------------------
@@ -103,7 +110,7 @@ def describe_filing(company: str) -> dict[str, Any]:
     Returns:
         A dict: {company_name, ticker, filing_date, source_url, sections}.
     """
-    if _retriever is None:
+    if _describe_fn is None:
         # STUB — clearly marked.
         return {
             "company_name": f"{company} (STUB)",
@@ -118,7 +125,7 @@ def describe_filing(company: str) -> dict[str, Any]:
             ],
             "note": "[STUB] Real filing identity/sections bind in at Prompt 1.6.",
         }
-    return _retriever(company=company, describe=True)
+    return _describe_fn(company)
 
 
 # ---------------------------------------------------------------------------
