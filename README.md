@@ -1,6 +1,6 @@
 # Filing Analyst Agent (module-03-agents-app)
 
-A multi-step agent over SEC 10-K / 8-K filings, built as an explicit LangGraph state machine that plans, calls tools, and checks its own work. It evolves the Module 02 RAG pipeline (the "Filing Analyst Copilot") from a single-pass retriever into an agent whose control flow you can diagram from memory.
+A multi-step agent over SEC 10-K filings, built as an explicit LangGraph state machine that plans, calls tools, and checks its own work. It evolves the Module 02 RAG pipeline (the "Filing Analyst Copilot") from a single-pass retriever into an agent whose control flow you can diagram from memory. The corpus is the latest 10-K for TSLA, AAPL, and NVDA (one filing each).
 
 ## Staged plan
 
@@ -10,7 +10,7 @@ A multi-step agent over SEC 10-K / 8-K filings, built as an explicit LangGraph s
 - **Stage 3 — External tool via MCP:** a live market-data tool the filings can't contain, so the agent reasons across a private corpus and a public live source.
 - **Stage 4 — Multi-agent:** an orchestrator delegates per-company sub-tasks to reusable copies of the Stage 1–3 analyst (A2A-style), then synthesizes and ranks.
 
-See `project-build-prompts.md` for the full brief and build prompts, and `SESSION-STATE.md` for current status.
+See `project-build-prompts-v2.md` for the full brief and build prompts (the source of truth; v1 is superseded), and `SESSION-STATE.md` for current status.
 
 ## Setup
 

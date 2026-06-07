@@ -36,9 +36,9 @@ Blurring these is the classic way an agent project turns into spaghetti: people 
 
 The retrieval stack is done, eval-validated, and lives in another repo. This agent does not rewrite it, import its internals, or re-litigate its design — it calls it through one thin wrapper (`search_filings`) that maps Module 02's output into the chunk+metadata shape the tools expect. Until the real import is bound, the tool returns clearly-marked stub data so the whole agent is testable without the corpus.
 
-This is Module 02's "interfaces at every swap point" principle applied across the module boundary: the agent depends on the *contract* (a query in, chunks+sources out), not the implementation.
+This is Module 02's "interfaces at every swap point" principle applied across the module boundary: the agent depends on the *contract* (a query in, chunks+sources out), not the implementation. Two facts from the real Module 02 code shape that contract (see `project-build-prompts-v2.md`): (a) we bind the **composed production stack** `Expand(Decomposition(Hybrid(Retriever(store))))`, not a bare `Retriever`, so the agent retrieves as well as the RAG project does; and (b) each chunk's **`id`** (e.g. `TSLA-1A-0007`) is Module 02's citation token and must be preserved end to end — drop it and Stage 2's grounding audit becomes impossible. The corpus itself is one latest 10-K each for TSLA/AAPL/NVDA, filterable by ticker only, which is *why* `describe_filing` exposes what's available instead of disambiguating among filings that don't exist.
 
-*Check yourself:* Why keep the stub behind a flag even after the real retriever is bound? — If Module 02's retrieve signature changed, how many files in *this* repo should have to change, and which ones?
+*Check yourself:* Why keep the stub behind a flag even after the real retriever is bound? — If Module 02's retrieve signature changed, how many files in *this* repo should have to change, and which ones? — Why is preserving the chunk `id` a Stage-1 concern even though nothing *uses* it until Stage 2?
 
 ### 4. Grounded-by-construction: reflection is a gate, not a vibe _(TBD — fill after Stage 2)_
 
@@ -55,7 +55,11 @@ Why an orchestrator + analyst specialists beats one bigger agent for cross-compa
 | Decision | Choice | Alternative | Why |
 |---|---|---|---|
 | Orchestration | hand-built LangGraph `StateGraph` | `create_react_agent` / `AgentExecutor` | Control flow must be visible and diagrammable from memory (Principle 1) |
-| Retrieval | Module 02 pipeline via thin tool wrapper | rewrite retrieval here | It's done and eval-validated; this module is about the agent, not retrieval (Principle 3) |
+| Retrieval | Module 02 **composed stack** via thin tool wrapper | rewrite retrieval here / bind a bare `Retriever` | It's done and eval-validated; the full stack (hybrid+decomp+expand) is what lifts recall@5 to 0.84 (Principle 3) |
+| Identity tool | `describe_filing(company)` — report what exists | v1's `lookup_filing(company, year, form_type)` | One latest 10-K per company means nothing to disambiguate; expose available sections instead (v2 ground truth) |
+| Citation token | preserve chunk `id` end to end | re-derive citations in the agent | `id` *is* Module 02's citation token; Stage 2's audit depends on it (Principle 3) |
+| Company arg | ticker, names normalized → ticker | accept free-text company | Index filters by ticker only; names fail silently (`{"ticker":"TESLA"}` → 0 chunks) |
 | Reflection | a mandatory node + revision loop | a prompt instruction / optional tool | Groundedness is the product promise; structure it, don't suggest it (Principle 4, TBD) |
 | Market data | external tool via MCP | bake a price API into a normal tool | MCP is the lesson — a real external connection across a private + public source (Stage 3) |
+| Temperature | never send it | set `temperature=0` | Opus 4.x rejects the param; `call_model` omits it (v2 ground truth) |
 | _more as we build_ | | | |

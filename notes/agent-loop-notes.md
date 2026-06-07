@@ -12,18 +12,20 @@ Two plain-English terms used throughout: a **node** is one step in the graph tha
 
 ## Why the naive (single-pass) approach fails
 
-Take *"Did revenue grow between the 2022 and 2023 10-K for Tesla?"* A single retrieve-then-answer pass can't do this: it needs two *separate* facts (2022 revenue, 2023 revenue) and then an arithmetic comparison. There's no one query that returns "the growth"; the answer has to be *assembled* across steps. That assembly — fetch, fetch, compute, conclude — is precisely what the loop provides and the straight line cannot.
+Take *"In Tesla's latest 10-K, did automotive revenue grow versus the prior year it reports?"* A single retrieve-then-answer pass can't do this: it needs two *separate* facts (this year's and last year's automotive revenue — a 10-K states both side by side) and then an arithmetic comparison. There's no one query that returns "the growth"; the answer has to be *assembled* across steps. That assembly — fetch, fetch, compute, conclude — is precisely what the loop provides and the straight line cannot.
+
+> **Corpus reality (v2):** we hold the *latest* 10-K only, for TSLA/AAPL/NVDA. So "year over year" means current-year vs prior-year figures **within one filing**, never two filings. The example is framed that way on purpose.
 
 Traced through the loop:
 
 | Turn | `model` decides | `tools` runs | transcript after |
 |---|---|---|---|
-| 1 | need 2022 revenue → `search_filings(…2022)` | → `$81,462M` | question + result |
-| 2 | need 2023 revenue → `search_filings(…2023)` | → `$96,773M` | + result |
-| 3 | compare them → `compare_numbers(81462, 96773)` | → `+15,311 / +18.8% / up` | + result |
-| 4 | have everything → writes answer, **no tool** | — | + final answer |
+| 1 | need current-year auto revenue → `search_filings("automotive revenue current year", company="Tesla")` | → chunk `TSLA-7-0003`: `$82,419M` | question + result |
+| 2 | need prior-year figure → `search_filings("automotive revenue prior year", company="Tesla")` | → chunk `TSLA-7-0004`: `$78,509M` | + result |
+| 3 | compare them → `compare_numbers(78509, 82419, …)` | → `+3,910 / +4.98% / up` | + result |
+| 4 | have everything → writes answer citing `[TSLA-7-0003]`/`[TSLA-7-0004]`, **no tool** | — | + final answer |
 
-The sequence search → search → compare → answer is the model reasoning. Nobody hardcoded it; a different question yields a different sequence through the same two nodes.
+The sequence search → search → compare → answer is the model reasoning. Nobody hardcoded it; a different question yields a different sequence through the same two nodes. (Figures illustrative — the point is the *shape* of the loop, and that every fact carries a chunk `id`.)
 
 ## Chosen design + tradeoffs
 
@@ -31,10 +33,10 @@ The sequence search → search → compare → answer is the model reasoning. No
 - `messages` — the running transcript, carrying an **add-reducer**. Plain English: each node *appends* to the list rather than overwriting it, so history accumulates and the model never loses what it already retrieved. (Without the reducer, each node clobbers the transcript and the agent forgets mid-task.)
 - `turn_count` — how many times the `model` node has run; consumed only by the safety cap.
 
-**Tools (3):**
-- `search_filings(query, company, year, form_type)` — *semantic* retrieval ("find chunks about X"). Thin wrapper over the Module 02 pipeline; stubbed until Prompt 1.6.
-- `lookup_filing(company, year, form_type)` — *identity* resolution ("which exact document is Tesla's 2023 10-K?"). Separate from search because targeting the right document is a different job from searching inside it; resolving identity first keeps the semantic search scoped and prevents cross-company/cross-year bleed.
-- `compare_numbers(a, b, label_a, label_b)` — deterministic arithmetic (difference, % change, direction). **No LLM.** Language models are unreliable at arithmetic, so we hand that to real Python and *guarantee* correctness. General lesson: give the agent deterministic tools for anything code does better than a model.
+**Tools (3):** — shapes per v2 (the corpus is one latest 10-K per TSLA/AAPL/NVDA; filter by ticker only):
+- `search_filings(query, company=None)` — *semantic* retrieval ("find chunks about X"). Returns chunks each carrying an `id` (the citation token) plus `text, company, section, filing_date, source_url, score`. No `year`/`form_type` params — the index can't filter them. `company` may be a ticker or a name (names→tickers at bind time). Thin wrapper over the Module 02 composed stack; stubbed until Prompt 1.6.
+- `describe_filing(company)` — *orientation*: returns the identity + available sections of the one 10-K we have (`{company_name, ticker, filing_date, source_url, sections}`). Replaces v1's `lookup_filing(company, year, form_type)` — with exactly one filing per company there's nothing to *disambiguate*, so instead we expose what IS there so the agent can orient before searching. Metadata only, not content.
+- `compare_numbers(a, b, label_a, label_b)` — deterministic arithmetic (difference, % change, direction). **No LLM.** Used to compare two figures pulled from the *same* 10-K (current vs prior year). Language models are unreliable at arithmetic, so we hand that to real Python and *guarantee* correctness. General lesson: give the agent deterministic tools for anything code does better than a model.
 
 **Nodes (2):**
 - `model` — calls Claude with the toolbox, appends the reply to `messages`, increments `turn_count`.
@@ -89,7 +91,7 @@ _TBD — after Prompt 1.4/1.6._ Target: run a question needing ≥2 tool calls a
 
 ## Future experiments queue
 
-- Tool-description A/B: does sharpening `search_filings` vs. `lookup_filing` descriptions change which the model picks? (Schema-quality lessons land in `tools-notes.md` after Prompt 1.1.)
+- Tool-description A/B: does sharpening `search_filings` vs. `describe_filing` descriptions change which the model picks? (Schema-quality lessons land in `tools-notes.md` after Prompt 1.1.)
 - Turn-cap probing: craft a question that *almost* loops forever; see where the cap fires.
 - Whether a stronger model (Opus) changes the tool sequence on the same question.
 

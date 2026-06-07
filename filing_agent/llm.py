@@ -38,17 +38,23 @@ def get_client() -> Anthropic:
     return _client
 
 
-def call_model(messages, tools=None, max_tokens=DEFAULT_MAX_TOKENS):
+def call_model(messages, tools=None, system=None, max_tokens=DEFAULT_MAX_TOKENS):
     """Send one request to Claude and return the RAW response object.
 
     Thin on purpose. We return the raw Message (not just text) so callers can
     inspect `stop_reason` and any `tool_use` blocks — which is exactly what the
     Stage 1 agent loop needs to decide whether to call a tool or stop.
 
+    `system` is the top-level system prompt (the Anthropic API takes it as its
+    own parameter, not as a message). We deliberately never set `temperature` —
+    Opus 4.x models reject it.
+
     Model comes from ANTHROPIC_MODEL (env), falling back to DEFAULT_MODEL.
     """
     model = os.getenv("ANTHROPIC_MODEL", DEFAULT_MODEL)
     kwargs = {"model": model, "max_tokens": max_tokens, "messages": messages}
+    if system:
+        kwargs["system"] = system
     if tools:
         kwargs["tools"] = tools
     return get_client().messages.create(**kwargs)

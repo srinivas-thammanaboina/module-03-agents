@@ -4,15 +4,25 @@ Auto-loaded by Claude Code in this directory. **Read this before doing anything.
 
 ## Context: where this project sits
 
-I'm working through an AI Engineer curriculum. **Module 03 is AGENTS** — building a "Filing Analyst Agent" over SEC 10-K / 8-K filings as an explicit **LangGraph state machine**. It evolves the Module 02 RAG pipeline (the "Filing Analyst Copilot") from a single-pass retriever into a multi-step agent that plans, calls tools, checks its own work, and (later) delegates. This project is the practical companion to the theory notes at `../ai-engineering-notes/03-agents/`.
+I'm working through an AI Engineer curriculum. **Module 03 is AGENTS** — building a "Filing Analyst Agent" over SEC 10-K filings as an explicit **LangGraph state machine**. It evolves the Module 02 RAG pipeline (the "Filing Analyst Copilot") from a single-pass retriever into a multi-step agent that plans, calls tools, checks its own work, and (later) delegates. This project is the practical companion to the theory notes at `../ai-engineering-notes/03-agents/`.
 
-The full staged spec lives in **`project-build-prompts.md`** (the original brief + copy-paste build prompts). Read it before any stage. Don't drift from it.
+The full staged spec lives in **`project-build-prompts-v2.md`** — the source of truth. (v1, `project-build-prompts.md`, is superseded: it was written before seeing the Module 02 code and assumed a corpus that doesn't exist. Follow v2.) Read v2's **"Ground truth about Module 02"** section before any stage. Don't drift from it.
+
+> **NOTE (do not delete):** `project-build-prompts.md` (v1) is kept only for history. Whenever this file or any project doc references "the build prompts," it means **v2**.
+
+## Ground truth about the corpus (from v2 — do not assume otherwise)
+
+- The Module 02 corpus is the **LATEST 10-K for exactly three companies: TSLA, AAPL, NVDA**. There are **no 8-Ks** and **only one year** of 10-K per company (~678 chunks total).
+- **Year-over-year comparisons happen WITHIN one 10-K** (which reports current- and prior-year figures side by side) — never across two filings.
+- Retrieval can **only filter by company TICKER**. There is no year or form-type field in the index. Company **names must be normalized to tickers** (Tesla→TSLA, Apple→AAPL, Nvidia→NVDA).
+- Each retrieved chunk's **`id`** (e.g. `TSLA-1A-0007`) **is the citation token** and MUST flow end to end — Stage 2 reflection audits answers against it.
+- Generation model is `claude-opus-4-8`; **never send a `temperature` parameter** (Opus 4.x rejects it — `call_model` must not set it).
 
 **The point of this project is my understanding, not your throughput.** The win condition is concrete: *I can diagram the agent's control flow from memory — every node, every edge, and the condition on each edge.* Optimize for that. A working graph I can't draw is a failure of this project; a small graph I can draw from memory is a success.
 
 ## The Module 02 dependency
 
-Module 02 (`../module-02-rag-app`) is **done and banked** — a working, eval-validated retrieval stack. It is NOT to be rewritten. It is a dependency this agent calls through a **thin tool wrapper** (`search_filings` / `lookup_filing`). The retrieval engine exists and works; it just needs an agent-callable doorknob. Until I hand over the exact import path, code against a thin interface I can bind later (clearly-marked stubs, per the build prompts).
+Module 02 (`../module-02-rag-app`) is **done and banked** — a working, eval-validated retrieval stack. It is NOT to be rewritten. It is a dependency this agent calls through a **thin tool wrapper** (`search_filings` / `describe_filing`). The real retriever is the **composed production stack** `Expand(Decomposition(Hybrid(Retriever(store))))`, each layer exposing `.retrieve(question, k, company)` — bind that whole stack at Prompt 1.6, not a bare `Retriever`. Until I hand over the exact import path, code against the thin `bind_retriever` interface (clearly-marked stubs, per v2).
 
 ## Non-negotiable working agreement
 
@@ -27,7 +37,7 @@ For every new stage or substantial change:
 3. **Wait for my explicit "go"** before writing any implementation code.
 4. **Capture the design in a notes file** (Rule 2). The notes file is the artifact of the whiteboard.
 
-If you find yourself about to write code without having had that conversation, **STOP**. Ask me to whiteboard first. Skipping this step is a violation, not a win — even when the resulting code looks fine. (The build prompts in `project-build-prompts.md` are deliberately one-step-at-a-time for exactly this reason — honor that cadence.)
+If you find yourself about to write code without having had that conversation, **STOP**. Ask me to whiteboard first. Skipping this step is a violation, not a win — even when the resulting code looks fine. (The build prompts in `project-build-prompts-v2.md` are deliberately one-step-at-a-time for exactly this reason — honor that cadence.)
 
 ### Rule 2 — Notes file per stage, designed BEFORE the code
 
@@ -73,7 +83,7 @@ The diagram + the trace are the teaching tools here, the way the CLI was in Modu
 
 ### Rule 6 — Stage-by-stage, pause for review
 
-Don't push to the next stage without an explicit "go." Even if the current stage runs cleanly, the pause is where the learning consolidates. The 🛑 review gates in `project-build-prompts.md` are real stops.
+Don't push to the next stage without an explicit "go." Even if the current stage runs cleanly, the pause is where the learning consolidates. The 🛑 review gates in `project-build-prompts-v2.md` are real stops.
 
 ### Rule 7 — Catch me up on resume
 
@@ -86,7 +96,7 @@ An explicit LangGraph `StateGraph` — control flow is nodes and conditional edg
 | # | Stage | Adds | Diagram |
 |---|---|---|---|
 | 0 | Scaffold | venv, `filing_agent/`, `llm.py` + smoke test (one real Claude call) | — |
-| 1 | Comparison Agent | `state` (messages + turn_count), 3 tools (`search_filings`, `lookup_filing`, `compare_numbers`), `model` + `tools` nodes, conditional edge that loops until the model stops asking for tools | `docs/graph-stage1.mmd` |
+| 1 | Comparison Agent | `state` (messages + turn_count), 3 tools (`search_filings`, `describe_filing`, `compare_numbers`), `model` + `tools` nodes, conditional edge that loops until the model stops asking for tools | `docs/graph-stage1.mmd` |
 | 2 | Reflection | `reflect` node + revision loop — self-check that every claim is grounded in a chunk; model's "done" path routes through `reflect`, not straight to END | `docs/graph-stage2.mmd` |
 | 3 | External tool via MCP | a live market-data tool added via MCP — reasons across the private corpus and a public live source. **Adds a tool, not a node — graph shape unchanged.** | (unchanged) |
 | 4 | Multi-agent | orchestrator (`decompose` → `delegate` → `synthesize`) delegating per-company sub-tasks to reusable copies of the Stage 1–3 analyst (A2A-style) | `docs/graph-stage4.mmd` |
@@ -97,7 +107,7 @@ Stages 1–2 are the committed project. Stages 3–4 are real extensions — bui
 
 ## Files to read at session start
 
-- `project-build-prompts.md` — the brief + staged build prompts; the source of truth for scope
+- `project-build-prompts-v2.md` — the brief + staged build prompts + Module 02 ground truth; the source of truth for scope
 - `SESSION-STATE.md` — where I am, what's done, what's next, durable decisions
 - `WHY.md` — cross-cutting design rationale (fills in as we build)
 - `notes/*.md` — design intent per stage
