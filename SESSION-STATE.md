@@ -6,16 +6,15 @@
 
 > On resume, summarize the per-task list below (1–2 sentences each), then state the single next step.
 
-**Session 2 (ended 2026-06-06) — what we did, per task:**
-1. **Phone-focus reminder hook** — added a global `SessionStart` hook in `~/.claude/settings.json` so every Claude session opens with "📵 Step 0: Keep your mobile far away." Saved the preference to memory too, so it carries across modules.
-2. **Adopted v2 build prompts** — switched the source of truth to `project-build-prompts-v2.md` (v1 assumed a corpus that doesn't exist) and swept every project doc for stale v1 references (10-K only; `describe_filing`; chunk-`id`; never send `temperature`).
-3. **Stage 1 Prompts 1.1–1.5 (✅)** — built `tools.py` (3 tools + schemas, v2 shapes), `executor.py` + 4 passing tests (chunk `id` survives, errors return strings), `state.py`/`nodes.py` (add-reducer + system prompt), `graph.py` + `run_agent.py` (loop verified live), and `draw_graph.py` → `docs/graph-stage1.mmd` (matches the hand-drawn graph).
-4. **Stage 1 Prompt 1.6 — real retriever bound (✅)** — `filing_agent/retrieval.py` imports Module 02's composed stack via `MODULE_02_PATH`, builds the embedder/store/stack once, normalizes names→tickers, preserves chunk `id`. Pinned retrieval deps to M02's exact versions. End-to-end real run worked: `search_filings → compare_numbers`, grounded answer citing chunk ids, TSLA revenue −2.93%.
-5. **Stage 1 COMPLETE** — captured notes (`agent-loop-notes.md`, `tools-notes.md` sanity-checks filled with the real runs); the committed core of the module is done.
+**Session 3 (ended 2026-06-07) — what we did, per task:**
+1. **Stage 2 — Reflection (✅)** — whiteboarded then built the `reflect` node + revision loop (two-loop graph): a deterministic citation audit (mirrors M02 `_audit_citations`) AND an LLM groundedness check, pass only if both. New state fields + `executor` now returns `ToolResult(content, retrieved_ids)`. Verified: normal Q passes (0 revisions); a forced fake citation is caught by BOTH checks. `docs/graph-stage2.mmd` exported.
+2. **Rule 8 — "I run it, not you" (✅)** — added to CLAUDE.md + strengthened memory: after code changes I hand over exact commands, the USER runs and pastes output, we analyze together; nothing marked verified until the user's output is in. User then re-ran Stage 2 themselves to confirm.
+3. **Stage 3 — MCP live market data (✅, extension)** — whiteboarded (4 decisions), then built `prices.py` (Yahoo source; Stooq was JS-anti-bot-walled) → `mcp_server.py` (FastMCP/stdio) → `market.py` (our MCP client) → registered `get_stock_price` in the toolset (lazy dispatch). Verified real cross-source run: `describe_filing → search_filings → get_stock_price×2 → compare_numbers`, answer grounded with BOTH chunk-ids and `MKT-` ids, reflection passed. Graph shape unchanged (tool, not node).
+4. **Mid-session phone reminders (✅)** — user confirmed they want phone nudges mid-session too; added `breakReminder` (every 30 min) to `~/.claude/settings.json` alongside the existing `SessionStart` hook; updated the phone-focus memory.
 
-**Single next step:** **Stage 2 — Reflection.** Per Rule 1, **whiteboard first** (don't write code): design the `reflect` node + the *revision loop* (a second loop atop the tool loop) — a deterministic citation audit (mirror Module 02's `_audit_citations`: every cited id must be one actually retrieved) PLUS an LLM groundedness check; then capture it in `notes/reflection-notes.md` before any code. Prompts 2.1 → 2.2 in `project-build-prompts-v2.md`.
+**Single next step:** Two small things: (a) **confirm `pytest`** — user to run `.venv/bin/python -m pytest -q` (expect 4 passed) to sign off that Stage 3's lazy dispatch didn't break unit tests (was not pasted yet). Then (b) **decide Stage 4 (Multi-agent / A2A)** — the last, most ambitious extension (orchestrator decomposes a cross-company question → delegates to reusable analyst copies → synthesizes/ranks). Per Rule 1, whiteboard Stage 4 before any code. Prompts 4.1 → 4.2 in `project-build-prompts-v2.md`. Stopping after Stage 3 is also a clean milestone.
 
-> _Session 1 (ended 2026-06-05): scaffolded the docs/working-agreement layer, the progress tracker, Stage 0 (smoke test passed), and the Stage 1 whiteboard. Full Stage-1 build happened in Session 2 above._
+> _Earlier: Session 1 (2026-06-05) scaffolded docs + Stage 0 + Stage 1 whiteboard; Session 2 (2026-06-06) adopted the v2 build prompts and built all of Stage 1 against the real Module 02 corpus._
 
 ## Where we are
 
@@ -47,7 +46,7 @@ Each task maps to a prompt in `project-build-prompts-v2.md`. Mark blocked tasks 
 | Stage 0 — Scaffold | ✅ done (smoke test passed: Sonnet 4.6 replied "OK") |
 | Stage 1 — Comparison Agent | ✅ done (real run: `search_filings → compare_numbers`, grounded answer with chunk-id citations; TSLA revenue −2.93% computed by the tool) |
 | Stage 2 — Reflection | ✅ done (reflect node + revision loop; deterministic citation audit + LLM groundedness; verified normal-pass and forced-hallucination-caught) |
-| Stage 3 — MCP external tool | ⬜ todo (extension) |
+| Stage 3 — MCP external tool | ✅ done (live market data via local MCP server+client; cross-source reasoning verified, both citation schemes grounded, reflection passed) |
 | Stage 4 — Multi-agent | ⬜ todo (extension) |
 
 ### Stage 0 — Scaffold
@@ -79,8 +78,8 @@ Each task maps to a prompt in `project-build-prompts-v2.md`. Mark blocked tasks 
 **Concepts:** MCP host/client/server; a tool adds capability without changing graph shape; reasoning across a private corpus + a public live source.
 | Task | Prompt | Status |
 |---|---|---|
-| Scope MCP: existing public server vs. minimal local one (decide source) | 3.1 | ⬜ |
-| Wire the market-data MCP tool into the tool set (graph shape unchanged) | 3.2 | ⬜ |
+| Scope MCP: existing public server vs. minimal local one (decide source) | 3.1 | ✅ (4 decisions: own client+dispatch; local server; `get_stock_price(ticker,date)`; unified `MKT-` citation id. Captured in `notes/mcp-notes.md`) |
+| Wire the market-data MCP tool into the tool set (graph shape unchanged) | 3.2 | ✅ (`prices.py` Yahoo source [Stooq was JS-walled] → `mcp_server.py` FastMCP/stdio → `market.py` client → registered in `TOOL_SCHEMAS`+`run_tool` (lazy). Real cross-source run: `describe_filing→search_filings→get_stock_price×2→compare_numbers`, both chunk-id + `MKT-` citations, reflection passed ✓) |
 
 ### Stage 4 — Multi-agent (extension)
 **Concepts:** A2A-style delegation; why the analyst must be stateless to parallelize; decompose → delegate → synthesize.

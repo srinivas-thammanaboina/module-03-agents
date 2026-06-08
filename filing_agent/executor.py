@@ -32,12 +32,26 @@ class ToolResult(NamedTuple):
     content: str
     retrieved_ids: list[str]
 
+def _get_stock_price(**kwargs):
+    """Lazy bridge to the MCP market tool.
+
+    Imported on call (not at module load) so the heavy MCP client — and the `mcp`
+    dependency — are only needed when this tool actually runs. Keeps unit tests
+    (which never call it) free of the MCP requirement.
+    """
+    from filing_agent.market import get_stock_price_tool
+
+    return get_stock_price_tool(**kwargs)
+
+
 # Explicit name → function map. Readable over clever: you can see every tool the
-# agent can reach in one place. (Stage 3 adds the MCP tool here.)
+# agent can reach in one place. `get_stock_price` is the MCP tool (Stage 3) —
+# same dispatch path as the local tools, so it flows through tools_node/reflect.
 _DISPATCH = {
     "search_filings": tools.search_filings,
     "describe_filing": tools.describe_filing,
     "compare_numbers": tools.compare_numbers,
+    "get_stock_price": _get_stock_price,
 }
 
 

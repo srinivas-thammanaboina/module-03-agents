@@ -256,4 +256,33 @@ TOOL_SCHEMAS: list[dict[str, Any]] = [
             "required": ["a", "b", "label_a", "label_b"],
         },
     },
+    {
+        "name": "get_stock_price",
+        "description": (
+            "Get a US stock's CURRENT or historical daily CLOSING price — LIVE market "
+            "data (via an external source), which the filings cannot contain. Use this "
+            "ONLY for stock prices / market movement, NEVER for anything stated in a "
+            "10-K (use search_filings for filing content). Covered tickers: TSLA, AAPL, "
+            "NVDA. Provide `ticker` (e.g. 'TSLA'); optional `date` ('YYYY-MM-DD') for a "
+            "historical close, omit for the latest. To answer 'how has the stock moved "
+            "since the filing?', use describe_filing's filing_date as the 'since' anchor: "
+            "get the price on that date AND the latest price, then call compare_numbers. "
+            "Cite the returned id in square brackets like a chunk, e.g. "
+            "[MKT-TSLA-2026-01-29]."
+        ),
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "ticker": {
+                    "type": "string",
+                    "description": "US stock ticker, e.g. 'TSLA', 'AAPL', 'NVDA'.",
+                },
+                "date": {
+                    "type": "string",
+                    "description": "Optional 'YYYY-MM-DD' for a historical close; omit for the latest price.",
+                },
+            },
+            "required": ["ticker"],
+        },
+    },
 ]

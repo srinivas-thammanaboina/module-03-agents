@@ -59,6 +59,10 @@ SYSTEM_PROMPT = (
     "prior-year figures side by side) — there is no second filing to compare against.\n"
     "Use the compare_numbers tool for any numeric comparison instead of doing arithmetic "
     "yourself.\n"
+    "You also have get_stock_price for LIVE market data (current/historical stock prices) "
+    "that the filings cannot contain. Cite its returned id (e.g. [MKT-TSLA-2026-01-29]) "
+    "just like a chunk id. For 'since the filing' questions, use the filing's filing_date "
+    "(from describe_filing) as the anchor.\n"
     "Never guess or rely on outside knowledge. If the filings don't support an answer, "
     "say so plainly."
 )

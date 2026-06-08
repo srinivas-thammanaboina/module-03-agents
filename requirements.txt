@@ -13,3 +13,7 @@ numpy==2.4.6
 torch==2.12.0
 chromadb==1.5.9
 sentence-transformers==5.5.1
+
+# Stage 3 — MCP (Model Context Protocol): our client + a local market-data server.
+# (Live prices come from Yahoo via stdlib urllib in prices.py — no extra dep.)
+mcp>=1.0
