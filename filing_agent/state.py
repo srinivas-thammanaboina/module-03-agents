@@ -24,3 +24,14 @@ from typing import Annotated, Any, TypedDict
 class AgentState(TypedDict):
     messages: Annotated[list[dict[str, Any]], operator.add]
     turn_count: int
+
+    # --- Stage 2 (reflection) ---
+    # Ids of chunks actually retrieved this run. add-reducer so they accumulate
+    # across every search call. This is the AUTHORITATIVE "provided" set the
+    # deterministic citation audit checks against (don't scrape it from text).
+    retrieved_ids: Annotated[list[str], operator.add]
+    # The answer being checked, the verdict, and how many times we've looped back
+    # to fix it (feeds the revision cap). No reducer → each write overwrites.
+    draft_answer: str
+    reflection_passed: bool
+    revision_count: int

@@ -56,6 +56,10 @@ def main() -> None:
     initial_state = {
         "messages": [{"role": "user", "content": question}],
         "turn_count": 0,
+        "retrieved_ids": [],
+        "draft_answer": "",
+        "reflection_passed": False,
+        "revision_count": 0,
     }
     final_state = app.invoke(initial_state)
 
@@ -69,9 +73,17 @@ def main() -> None:
 
     print(f"QUESTION: {question}\n")
     print(f"TOOLS CALLED ({len(tool_sequence)}): {' -> '.join(tool_sequence) or '(none)'}")
-    print(f"TURNS: {final_state['turn_count']}\n")
+    print(f"TURNS: {final_state['turn_count']} | REVISIONS: {final_state.get('revision_count', 0)}")
+
+    # On a pass, draft_answer IS the shipped answer. On give-up, the last message
+    # is the critique, so use draft_answer and flag it unverified.
+    passed = final_state.get("reflection_passed")
+    answer = final_state.get("draft_answer") or _final_text(final_state["messages"][-1])
+    print(f"REFLECTION: {'passed ✓' if passed else 'NOT passed ⚠'}\n")
+    if passed is False:
+        print("⚠ UNVERIFIED — reflection did not pass after revisions. Treat with caution.\n")
     print("ANSWER:")
-    print(_final_text(final_state["messages"][-1]) or "(no text answer)")
+    print(answer or "(no text answer)")
 
 
 if __name__ == "__main__":

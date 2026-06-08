@@ -46,7 +46,7 @@ Each task maps to a prompt in `project-build-prompts-v2.md`. Mark blocked tasks 
 | Docs scaffold (`CLAUDE.md`, `SESSION-STATE.md`, `WHY.md`, `notes/`) | ✅ done |
 | Stage 0 — Scaffold | ✅ done (smoke test passed: Sonnet 4.6 replied "OK") |
 | Stage 1 — Comparison Agent | ✅ done (real run: `search_filings → compare_numbers`, grounded answer with chunk-id citations; TSLA revenue −2.93% computed by the tool) |
-| Stage 2 — Reflection | 🔄 next |
+| Stage 2 — Reflection | ✅ done (reflect node + revision loop; deterministic citation audit + LLM groundedness; verified normal-pass and forced-hallucination-caught) |
 | Stage 3 — MCP external tool | ⬜ todo (extension) |
 | Stage 4 — Multi-agent | ⬜ todo (extension) |
 
@@ -72,8 +72,8 @@ Each task maps to a prompt in `project-build-prompts-v2.md`. Mark blocked tasks 
 **Concepts:** reflection as a *node*, not a prompt trick; the revision loop; groundedness (claim → chunk); graceful give-up (flag-as-unverified).
 | Task | Prompt | Status |
 |---|---|---|
-| `reflect_node` + JSON verdict parsing; new state fields | 2.1 | ⬜ |
-| Rewire graph: model→reflect, `should_revise`, `docs/graph-stage2.mmd` | 2.2 | ⬜ |
+| `reflect_node` + JSON verdict parsing; new state fields | 2.1 | ✅ (state +`retrieved_ids`/`draft_answer`/`reflection_passed`/`revision_count`; `executor` now returns `ToolResult(content, retrieved_ids)`; reflect = deterministic citation audit (mirrors M02 `_CITATION_RE`/`_audit_citations`) AND LLM groundedness check, pass only if both; fail→critique+`revision_count`+1; `REVISION_CAP=2`. Deterministic half verified offline; tests 4/4) |
+| Rewire graph: model→reflect, `should_revise`, `docs/graph-stage2.mmd` | 2.2 | ✅ (two-loop graph: `should_continue` no-tool→`reflect`; `should_revise` pass→END / fail&under cap→model / else→END flagged unverified; diagram exported. Verified: normal Q passes reflection (0 revisions); forced fake citation caught by BOTH deterministic audit + LLM check → revision loop) |
 
 ### Stage 3 — External tool via MCP (extension)
 **Concepts:** MCP host/client/server; a tool adds capability without changing graph shape; reasoning across a private corpus + a public live source.

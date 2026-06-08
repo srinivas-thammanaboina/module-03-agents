@@ -89,6 +89,15 @@ Don't push to the next stage without an explicit "go." Even if the current stage
 
 At the **start of every session**, before anything else, read `SESSION-STATE.md` and give me a brief catch-up: **one to two sentences per task** we completed last session, so I can re-orient fast — then state the single next step. Keep it short: a recap to reload context, not a status report. The per-task recap block at the top of `SESSION-STATE.md` is the source for this.
 
+### Rule 8 — I run it, not you
+
+After any code change, **do NOT run it yourself to verify.** Instead, give me the exact copy-paste command(s) to run; **I** run them, paste the output back, and **we analyze the output together**. This is how I stay aware of what's actually happening — if you run-and-confirm, I lose the thread and the learning.
+
+- Applies to executing project code: tests, scripts, the agent, smoke tests, installs, anything that runs the build or changes the environment.
+- You MAY still use read-only inspection for your own work (Read, Grep/Glob, reading versions/configs) — that's not a validation run.
+- When you hand me commands, give the precise invocation (e.g. `.venv/bin/python -m pytest -q`) and say one line on what to look for in the output. Then **wait** for my pasted output before continuing or marking anything done/verified.
+- Don't mark a task ✅ "verified" until I've pasted the output and we've read it together.
+
 ## Project architecture (high level)
 
 An explicit LangGraph `StateGraph` — control flow is nodes and conditional edges I can see, **not** a prebuilt agent executor. **Do not use `create_react_agent` / `AgentExecutor`; build the graph by hand.** The package is `filing_agent/`.

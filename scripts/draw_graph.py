@@ -15,7 +15,10 @@ sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
 
 from filing_agent.graph import app  # noqa: E402
 
-OUT_PATH = pathlib.Path(__file__).resolve().parent.parent / "docs" / "graph-stage1.mmd"
+# Stage to export — defaults to the current graph (stage 2). Override with an arg:
+#   .venv/bin/python scripts/draw_graph.py stage1
+_STEM = sys.argv[1] if len(sys.argv) > 1 else "graph-stage2"
+OUT_PATH = pathlib.Path(__file__).resolve().parent.parent / "docs" / f"{_STEM}.mmd"
 
 
 def main() -> None:
