@@ -6,15 +6,18 @@
 
 > On resume, summarize the per-task list below (1–2 sentences each), then state the single next step.
 
-**Session 3 (ended 2026-06-07) — what we did, per task:**
-1. **Stage 2 — Reflection (✅)** — whiteboarded then built the `reflect` node + revision loop (two-loop graph): a deterministic citation audit (mirrors M02 `_audit_citations`) AND an LLM groundedness check, pass only if both. New state fields + `executor` now returns `ToolResult(content, retrieved_ids)`. Verified: normal Q passes (0 revisions); a forced fake citation is caught by BOTH checks. `docs/graph-stage2.mmd` exported.
-2. **Rule 8 — "I run it, not you" (✅)** — added to CLAUDE.md + strengthened memory: after code changes I hand over exact commands, the USER runs and pastes output, we analyze together; nothing marked verified until the user's output is in. User then re-ran Stage 2 themselves to confirm.
-3. **Stage 3 — MCP live market data (✅, extension)** — whiteboarded (4 decisions), then built `prices.py` (Yahoo source; Stooq was JS-anti-bot-walled) → `mcp_server.py` (FastMCP/stdio) → `market.py` (our MCP client) → registered `get_stock_price` in the toolset (lazy dispatch). Verified real cross-source run: `describe_filing → search_filings → get_stock_price×2 → compare_numbers`, answer grounded with BOTH chunk-ids and `MKT-` ids, reflection passed. Graph shape unchanged (tool, not node).
-4. **Mid-session phone reminders (✅)** — user confirmed they want phone nudges mid-session too; added `breakReminder` (every 30 min) to `~/.claude/settings.json` alongside the existing `SessionStart` hook; updated the phone-focus memory.
+**🏁 PROJECT COMPLETE — all stages 0–4 built and verified.**
 
-**Single next step:** Two small things: (a) **confirm `pytest`** — user to run `.venv/bin/python -m pytest -q` (expect 4 passed) to sign off that Stage 3's lazy dispatch didn't break unit tests (was not pasted yet). Then (b) **decide Stage 4 (Multi-agent / A2A)** — the last, most ambitious extension (orchestrator decomposes a cross-company question → delegates to reusable analyst copies → synthesizes/ranks). Per Rule 1, whiteboard Stage 4 before any code. Prompts 4.1 → 4.2 in `project-build-prompts-v2.md`. Stopping after Stage 3 is also a clean milestone.
+**Session 4 (ended 2026-06-08) — what we did, per task:**
+1. **Stage 4 whiteboard (A2A) (✅)** — designed orchestrator + reusable analyst; 5 decisions locked (own analyst fn + Agent Card; orchestrator as its own LangGraph; sequential delegation; union citation audit; restrict to TSLA/AAPL/NVDA). Captured in `notes/multi-agent-notes.md`.
+2. **Prompt 4.1 — reusable analyst (✅)** — `analyst.py`: `run_analyst(company, question)` reuses the compiled graph with fresh state, ticker-scoped; `AGENT_CARD`. Isolation verified (TSLA cites only TSLA, NVDA only NVDA, both pass).
+3. **Prompt 4.2 — orchestrator (✅)** — `orchestrator.py` linear graph `decompose → delegate → synthesize`; union citation audit; `docs/graph-stage4.mmd`. Cross-company run ranked NVDA>AAPL>TSLA, citations intact.
+4. **AAPL-FAIL diagnosis (✅)** — `scripts/diagnose_analyst.py` revealed reflection caught 3 *legitimate* over-claims (invented taxonomy, selective framing, misattributed citation), not fake ids. Validated surfacing unverified answers.
+5. **Polish + fixes (✅)** — (option 1) orchestrator surfaces unverified sub-answers; (option 3) reflect-the-synthesis groundedness check — caught a real fabrication; **root-cause fix `DEFAULT_MAX_TOKENS` 1024→4096** (answers were truncating → spurious FAILs + synthesis fabrication, both resolved); quieted HF/FutureWarning noise; rewrote `README.md` for the finished agent. Final run: all answers complete, synthesis groundedness ✓, union audit clean, weak analyst correctly flagged unverified.
 
-> _Earlier: Session 1 (2026-06-05) scaffolded docs + Stage 0 + Stage 1 whiteboard; Session 2 (2026-06-06) adopted the v2 build prompts and built all of Stage 1 against the real Module 02 corpus._
+**Single next step:** **None required — project is done.** Optional future experiments are logged in `notes/multi-agent-notes.md` (analyst over-claiming on rich answers; revision-loop/reflect-staleness; parallel delegation; quote-or-qualify analyst prompt). Module 03 is complete; next would be Module 04 (finetuning).
+
+> _Earlier: S1 (2026-06-05) docs + Stage 0 + Stage 1 whiteboard; S2 (2026-06-06) adopted v2 prompts, built Stage 1 on the real corpus; S3 (2026-06-07) built Stage 2 (reflection) + Stage 3 (MCP), added Rule 8 + mid-session phone reminders._
 
 ## Where we are
 
@@ -47,7 +50,7 @@ Each task maps to a prompt in `project-build-prompts-v2.md`. Mark blocked tasks 
 | Stage 1 — Comparison Agent | ✅ done (real run: `search_filings → compare_numbers`, grounded answer with chunk-id citations; TSLA revenue −2.93% computed by the tool) |
 | Stage 2 — Reflection | ✅ done (reflect node + revision loop; deterministic citation audit + LLM groundedness; verified normal-pass and forced-hallucination-caught) |
 | Stage 3 — MCP external tool | ✅ done (live market data via local MCP server+client; cross-source reasoning verified, both citation schemes grounded, reflection passed) |
-| Stage 4 — Multi-agent | ⬜ todo (extension) |
+| Stage 4 — Multi-agent | ✅ done (orchestrator delegates to reusable analyst specialists, ranks, audits citations, surfaces unverified answers) — **PROJECT COMPLETE: all stages 0–4 done** |
 
 ### Stage 0 — Scaffold
 **Concepts:** project plumbing; Anthropic client config; env loading; "prove the pipe works before any graph logic."
@@ -85,8 +88,8 @@ Each task maps to a prompt in `project-build-prompts-v2.md`. Mark blocked tasks 
 **Concepts:** A2A-style delegation; why the analyst must be stateless to parallelize; decompose → delegate → synthesize.
 | Task | Prompt | Status |
 |---|---|---|
-| Make the Stage 1–3 graph a reusable, stateless `analyst` + capability descriptor | 4.1 | ⬜ |
-| Orchestrator graph (`decompose`/`delegate`/`synthesize`) + `docs/graph-stage4.mmd` | 4.2 | ⬜ |
+| Make the Stage 1–3 graph a reusable, stateless `analyst` + capability descriptor | 4.1 | ✅ (`analyst.py`: `run_analyst(company,question)` reuses the compiled graph, fresh state, ticker-scoped; `AGENT_CARD`. Isolation verified: TSLA cites only TSLA, NVDA only NVDA, both pass) |
+| Orchestrator graph (`decompose`/`delegate`/`synthesize`) + `docs/graph-stage4.mmd` | 4.2 | ✅ (`orchestrator.py` linear graph; restricts to TSLA/AAPL/NVDA; sequential delegate; union citation audit; **surfaces unverified sub-answers** [option 1]. Real run: 3 tasks, ranked NVDA>AAPL>TSLA, audit clean. AAPL-FAIL diagnosed → 3 legit over-claims; logged as future experiments) |
 
 ## Open questions / to decide
 

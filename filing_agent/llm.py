@@ -14,7 +14,10 @@ from dotenv import load_dotenv
 load_dotenv()
 
 DEFAULT_MODEL = "claude-sonnet-4-6"
-DEFAULT_MAX_TOKENS = 1024
+# 4096 (was 1024): rich analyst answers (block quotes + revenue tables) were
+# truncating mid-content at 1024, which tripped reflection (spurious FAILs) and
+# left gaps the orchestrator's synthesis filled with ungrounded estimates.
+DEFAULT_MAX_TOKENS = 4096
 
 # The agent loop calls the model many times per question, so we build the
 # client once and reuse it rather than re-reading the key on every call.

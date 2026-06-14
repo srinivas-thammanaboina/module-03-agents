@@ -24,7 +24,14 @@ executor stay on the stubs (the "keep the stub behind a fallback" requirement).
 import os
 import pathlib
 import sys
+import warnings
 from typing import Any, Optional
+
+# Quiet two cosmetic warnings that fire when Module 02's embedder loads (the bge
+# model is cached locally, and the FutureWarning lives in Module 02's code, which
+# we don't edit). Set BEFORE sentence-transformers is first imported (in _ensure).
+os.environ.setdefault("HF_HUB_OFFLINE", "1")  # model cached → skip hub checks
+warnings.filterwarnings("ignore", message=r".*get_sentence_embedding_dimension.*")
 
 # Module 02 lives in a sibling repo. Its config resolves all paths (including the
 # Chroma dir) relative to its own package location, so importing it from here
